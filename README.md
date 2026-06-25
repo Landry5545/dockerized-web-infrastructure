@@ -43,3 +43,28 @@ A simple web server deployed inside a Docker container on an Ubuntu Server VM. T
 ## Troubleshooting case study: Docker DNS failure
 
 **Problem:** `docker run nginx` failed with a DNS resolution error when pulling the image:
+**Diagnosis:**
+- `ping 8.8.8.8` succeeded, confirming raw internet connectivity was fine.
+- The failure was specific to DNS name resolution, not general connectivity.
+- `/etc/resolv.conf` was a symlink managed by `systemd-resolved`, pointing to a local stub resolver (`127.0.0.1`) that Docker couldn't use to reach external DNS servers correctly in this environment.
+
+**Fix:**
+```bash
+sudo systemctl disable --now systemd-resolved
+sudo rm -f /etc/resolv.conf
+sudo bash -c 'echo "nameserver 8.8.8.8" > /etc/resolv.conf'
+```
+This replaced the auto-managed symlink with a static file pointing directly to a public DNS server, which Docker could then use reliably.
+
+**Lesson:** Ubuntu's `systemd-resolved` stub resolver can interfere with services (like Docker) that expect a directly usable DNS configuration. Knowing how to inspect and override `/etc/resolv.conf` is a useful skill when containers can't reach the internet but the host clearly can.
+
+## Tools used
+
+- Oracle VirtualBox
+- Ubuntu Server (LTS)
+- Docker Engine
+- Nginx (official Docker image)
+
+## Author
+
+[Landry5545](https://github.com/Landry5545)
